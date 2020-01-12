@@ -29,7 +29,7 @@ def tensor_to_image(tensor):
 
 content_path = tf.keras.utils.get_file('Chamath_Palihapitiya_Portrait.jpg', 'https://upload.wikimedia.org/wikipedia/commons/6/6c/Chamath_Palihapitiya_Portrait.jpg')
 
-style_path = tf.keras.utils.get_file('14765707_f496.webp','https://usercontent2.hubstatic.com/14765707_f496.jpg')
+style_path = tf.keras.utils.get_file('4ytbpO.png','https://img.itch.zone/aW1nLzE2Mjk2NDUucG5n/original/4ytbpO.png')
 
 def load_img(path_to_img):
   max_dim = 512
