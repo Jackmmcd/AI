@@ -1,0 +1,91 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Created on Sat Feb  1 10:57:51 2020
+
+@author: jackmcdonald
+"""
+
+import pandas as pd
+import numpy as np
+import tensorflow as tf
+
+
+tweets=pd.read_csv('trumpDataset.csv',sep= ',')
+
+print(tweets)
+tweetChar=sorted(set(tweets))
+print('Length of text: {} characters'.format(len(tweetChar)))
+
+vectorizeC_N= {u:i for i, u in enumerate(tweets)}
+vectorizeN_C= np.array(tweets)
+
+vecText= np.array([vectorizeC_N[a] for a in (tweets)])
+
+numEpochEx= len(tweets)
+lengthOfSeq= 50
+
+charIndices= tf.data.Dataset.from_tensor_slices(vecText)
+
+seqs= charIndices.batch(lengthOfSeq+1, drop_remainder= True)
+
+
+#opensource tensorflow input text manipulating function:
+def split_input_target(chunk):
+    input_text = chunk[:-1]
+    target_text = chunk[1:]
+    return input_text, target_text
+
+bufferSize= 1000
+batchSize=64
+
+indices_set= tweets.shuffle(bufferSize.batch(batchSize, drop_remainder=True)) 
+
+
+def model(embeddingDim, termSize,batchSize, rnnUnits):
+  model = tf.keras.Sequential([
+    tf.keras.layers.Embedding(textSize, embeddingDim, inputBatchShape=[batchSize, None]),
+    tf.keras.layers.GRU(rnnUnits,return_sequences=True,stateful=True, recurrent_initializer='glorot_uniform'),
+    tf.keras.layers.Dense(textSize)])
+
+genModel= model(256, len(tweets), batchSize, 1024)
+
+model.compile(optimizers='adam', losses= tf.losses.sparse_categorical_crossentropy(labels, logits, from_logits=True))
+
+checkpoint_directory = './training_checkpoints'
+checkpoint_prfx = os.path.join(checkpoint_directory, "ckpt_{epoch}")
+
+checkpoint_callback=tf.keras.callbacks.ModelCheckpoint(filepath=checkpoint_prfx, save_weights_only=True)
+
+history= model.fit(tweets, epochs=10, callbacks=[checkpoint_callback])
+
+
+tf.train.latest_checkpoint(checkpoint_directory)
+newModel= genModel(256, len(tweets), 1, 1024)
+
+newModel.load_weights(tf.train.latest_checkpoint(checkpoint_directory))
+newModel.build(tf.TensorShape([1, None]))
+
+generatedTxt=[]
+def createText(inputString, model):
+    input_eval = [vectorizeC_N[s] for s in inputString]
+    input_eval = tf.expand_dims(input_eval, 0)
+
+    text_generated = []
+    model.reset_states()
+    for i in range(1000):
+        predictions = model(input_eval)
+        # remove the batch dimension
+        predictions = tf.squeeze(predictions, 0)
+        
+        predictions = predictions / 1.0
+        predicted_id = tf.random.categorical(predictions, num_samples=1)[-1,0].numpy()
+
+        input_eval = tf.expand_dims([predicted_id], 0)
+
+        text_generated.append(v[predicted_id])
+
+    return (inputString + ''.join(generatedTxt))
+
+print(createText(inputString=u"Hello"))
+
