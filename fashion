@@ -5,31 +5,30 @@ from tensorflow import keras
 
 import numpy as np
 import matplotlib.pyplot as plt
+import tensorflow_datasets as tfds
 
-print(tf.__version__)
-fashion_mnist= keras.datasets.fashion_mnist
-fashion_mnist.load_data((train_images, train_labels), (test_images, test_labels))=(train_images, train_labels), (test_images, test_labels)
+tfds.disable_progress_bar()
+dataset, metadata = tfds.load('fashion_mnist', as_supervised=True, with_info=True)
+train_dataset, test_dataset = dataset['train'], dataset['test']
+
+def normalize(images, labels):
+  images = tf.cast(images, tf.float32)
+  images /= 255
+  return images, labels
+
+train_dataset =  train_dataset.map(normalize)
+test_dataset  =  test_dataset.map(normalize)
+
+train_dataset =  train_dataset.cache()
+test_dataset  =  test_dataset.cache()
+
+for image, label in test_dataset.take(1):
+  break
+image = image.numpy().reshape((28,28))
+
+
+fashion_mnist.load_data((train_images, train_labels), (test_images, test_labels))
 class_names = ['T-shirt/top', 'Trouser', 'Pullover', 'Dress', 'Coat','Sandal', 'Shirt', 'Sneaker', 'Bag', 'Ankle boot']
-
-plt.figure()
-plt.imshow(train_images[0])
-plt.colorbar()
-plt.grid(False)
-plt.show()
-
-train_images = train_images / 255.0
-
-test_images = test_images / 255.0
-
-plt.figure(figsize=(10,10))
-for i in range(100):
-    plt.subplot(10,10,i+1)
-    plt.xticks([])
-    plt.yticks([])
-    plt.grid(False)
-    plt.imshow(train_images[i], cmap=plt.cm.binary)
-    plt.xlabel(class_names[train_labels[i]])
-plt.show()
 
 model = keras.Sequential([
     keras.layers.Flatten(input_shape=(28, 28)),
@@ -37,7 +36,15 @@ model = keras.Sequential([
     keras.layers.Dense(10, activation='softmax')
 ])
 
-model.fit(train_images, train_labels, epochs=10)
-test_loss, test_acc = model.evaluate(test_images,  test_labels, verbose=2)
+model.compile(optinmizer='adam',
+              loss= 'sparse_catagorical_crossentropy',
+              metrics='loss')
+
+BATCH_SIZE = 32
+train_dataset = train_dataset.repeat().shuffle(num_train_examples).batch(BATCH_SIZE)
+test_dataset = test_dataset.batch(BATCH_SIZE)
+
+model.fit(train_dataset, epochs=5, steps_per_epoch=math.ceil(num_train_examples))
+test_loss, test_accuracy = model.evaluate(test_dataset, steps=math.ceil(num_test_examples/32))
 
 print('\nTest accuracy:', test_acc)
